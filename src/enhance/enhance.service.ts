@@ -1,40 +1,33 @@
 import { Injectable } from '@nestjs/common';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { convertCR3toJPEG } from '../utils/cr3Converter';
-import { mergeBracketedImages } from '../utils/mergeBracketed'; // ✅ Fixed import
+import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs';
-
-const execAsync = promisify(exec);
+import FormData from 'form-data';
 
 @Injectable()
 export class EnhanceService {
   async enhanceImage(file: Express.Multer.File, imageType: string): Promise<string> {
-    const originalPath = file.path;
-    const outputDir = path.join(__dirname, '../../uploads');
-    let processedPath: string = originalPath;
+    const filePath = path.resolve(file.path);
+    const fileStream = fs.createReadStream(filePath);
 
-    // 🧪 Convert CR3 to JPEG if needed
-    if (imageType === 'cr3' && path.extname(originalPath).toLowerCase() === '.cr3') {
-      processedPath = await convertCR3toJPEG(originalPath, outputDir);
-    }
+    const form = new FormData();
+    form.append('file', fileStream, {
+      filename: path.basename(filePath),
+      contentType: file.mimetype,
+    });
 
-    // 🖼️ (Optional) Bracketed merging logic placeholder (for future batch uploads)
-    // if (imageType === 'bracketed') {
-    //   processedPath = await mergeBracketedImages([...], mergedOutputPath);
-    // }
+    const response = await axios.post(
+      'https://swinir-api.onrender.com/enhance',
+      form,
+      {
+        headers: form.getHeaders(),
+        maxBodyLength: Infinity,
+      }
+    );
 
-    // ⚙️ Run SwinIR enhancement
-    const { stdout } = await execAsync(`python3 ./SwinIR/enhance.py "${processedPath}"`);
-    const enhancedPath = processedPath.replace(/\.(jpg|jpeg|png)$/i, '_enhanced.$1');
-
-    // ✅ Ensure enhanced file exists
-    if (!fs.existsSync(enhancedPath)) {
-      throw new Error('Enhanced file was not created');
-    }
-
-    return enhancedPath;
+    const { enhanced_url } = response.data;
+    return `https://swinir-api.onrender.com${enhanced_url}`;
   }
 }
+
 

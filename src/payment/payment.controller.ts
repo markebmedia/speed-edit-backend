@@ -20,9 +20,7 @@ export class PaymentController {
     @Res() res: Response,
   ) {
     if (!imageUrl) {
-      return res
-        .status(HttpStatus.BAD_REQUEST)
-        .json({ message: 'Missing imageUrl' });
+      return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Missing imageUrl' });
     }
 
     try {
@@ -30,24 +28,19 @@ export class PaymentController {
       return res.status(HttpStatus.OK).json({ url: sessionUrl });
     } catch (error) {
       console.error('Stripe Error:', error);
-      return res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ message: 'Failed to create checkout session' });
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create checkout session' });
     }
   }
 
   @Get('success')
-  async paymentSuccess(
-    @Query('session_id') sessionId: string,
-    @Res() res: Response,
-  ) {
+  async paymentSuccess(@Query('session_id') sessionId: string, @Res() res: Response) {
     if (!sessionId) {
       return res.status(HttpStatus.BAD_REQUEST).send('Missing session ID');
     }
 
     try {
       const session = await this.paymentService.retrieveSession(sessionId);
-      const imageUrl = session.metadata?.imageUrl;
+      const imageUrl = (session.payment_intent as any).metadata?.imageUrl;
 
       return res.send(`
         <html>
@@ -61,9 +54,7 @@ export class PaymentController {
       `);
     } catch (err) {
       console.error(err);
-      return res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .send('Error retrieving payment details.');
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error retrieving payment details.');
     }
   }
 

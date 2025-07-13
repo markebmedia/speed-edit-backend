@@ -1,4 +1,3 @@
-// src/payment/payment.service.ts
 import { Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import * as dotenv from 'dotenv';
@@ -11,7 +10,7 @@ export class PaymentService {
 
   constructor() {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-      apiVersion: '2022-11-15',
+      apiVersion: '2022-11-15', // ✅ Safe supported version
     });
   }
 
@@ -24,6 +23,7 @@ export class PaymentService {
             currency: 'gbp',
             product_data: {
               name: 'Speed Edit Download',
+              images: [imageUrl],
             },
             unit_amount: 199, // £1.99
           },
@@ -31,8 +31,8 @@ export class PaymentService {
         },
       ],
       mode: 'payment',
-      success_url: `https://speed-edit.onrender.com/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://speed-edit.onrender.com/payment/cancel`,
+      success_url: `https://www.markebmedia.com/speed-edit-upload?success=true`,
+      cancel_url: `https://www.markebmedia.com/speed-edit-upload?cancelled=true`,
       metadata: { imageUrl },
     });
 
