@@ -31,8 +31,15 @@ export class EnhanceController {
     @UploadedFile() file: Express.Multer.File,
     @Body('imageType') imageType: string
   ) {
+    if (!file) {
+      throw new Error('No file uploaded');
+    }
+
     const imageUrl = await this.enhanceService.enhanceImage(file, imageType);
-    return { message: 'Image enhanced successfully', imageUrl };
+    return {
+      message: 'Image enhanced successfully',
+      enhanced_url: imageUrl,
+    };
   }
 }
 
