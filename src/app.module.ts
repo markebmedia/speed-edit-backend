@@ -1,11 +1,11 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
-import { PaymentController } from './payment/payment.controller';
-import { PaymentService } from './payment/payment.service';
+import { UploadController } from './upload/upload.controller';
+import { EnhanceService } from './enhance/enhance.service';
+import { PaymentController } from './payment/payment.controller'; // ✅ Add this
 
 @Module({
-  imports: [],
-  controllers: [PaymentController],
-  providers: [PaymentService],
+  controllers: [UploadController, PaymentController], // ✅ Add here
+  providers: [EnhanceService],
 })
 export class AppModule {}
+

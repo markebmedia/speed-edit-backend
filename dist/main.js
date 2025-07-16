@@ -9,8 +9,8 @@ async function bootstrap() {
     app.enableCors({ origin: '*' });
     app.use(bodyParser.json({ limit: '50mb' }));
     app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
-    app.useStaticAssets((0, path_1.join)(__dirname, '..', 'uploads'), {
-        prefix: '/uploads',
+    app.useStaticAssets((0, path_1.join)(__dirname, '..', 'public/outputs'), {
+        prefix: '/outputs',
     });
     const port = process.env.PORT || 3000;
     await app.listen(port);

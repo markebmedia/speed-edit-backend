@@ -14,58 +14,44 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentController = void 0;
 const common_1 = require("@nestjs/common");
-const payment_service_1 = require("./payment.service");
+const stripe_1 = require("stripe");
 let PaymentController = class PaymentController {
-    constructor(paymentService) {
-        this.paymentService = paymentService;
+    constructor() {
+        this.stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY, {
+            apiVersion: '2022-11-15',
+        });
     }
     async createCheckout(imageUrl, res) {
-        if (!imageUrl) {
-            return res.status(common_1.HttpStatus.BAD_REQUEST).json({ message: 'Missing imageUrl' });
-        }
         try {
-            const sessionUrl = await this.paymentService.createCheckoutSession(imageUrl);
-            return res.status(common_1.HttpStatus.OK).json({ url: sessionUrl });
+            if (!imageUrl) {
+                return res.status(400).json({ message: 'Missing imageUrl' });
+            }
+            console.log('Creating Stripe checkout for:', imageUrl);
+            const session = await this.stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [
+                    {
+                        price_data: {
+                            currency: 'gbp',
+                            product_data: {
+                                name: 'Enhanced Property Image',
+                                images: [imageUrl],
+                            },
+                            unit_amount: 199,
+                        },
+                        quantity: 1,
+                    },
+                ],
+                mode: 'payment',
+                success_url: `${process.env.FRONTEND_URL}/success`,
+                cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+            });
+            return res.status(200).json({ url: session.url });
         }
         catch (error) {
-            console.error('Stripe Error:', error);
-            return res.status(common_1.HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create checkout session' });
+            console.error('Stripe checkout error:', error);
+            return res.status(500).json({ message: 'Stripe checkout failed' });
         }
-    }
-    async paymentSuccess(sessionId, res) {
-        if (!sessionId) {
-            return res.status(common_1.HttpStatus.BAD_REQUEST).send('Missing session ID');
-        }
-        try {
-            const session = await this.paymentService.retrieveSession(sessionId);
-            const imageUrl = session.payment_intent.metadata?.imageUrl;
-            return res.send(`
-        <html>
-          <head><title>Payment Success</title></head>
-          <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
-            <h1>✅ Payment Successful!</h1>
-            <p>Your image is ready to download:</p>
-            <a href="${imageUrl}" download style="font-size: 18px;">⬇️ Download Image</a>
-          </body>
-        </html>
-      `);
-        }
-        catch (err) {
-            console.error(err);
-            return res.status(common_1.HttpStatus.INTERNAL_SERVER_ERROR).send('Error retrieving payment details.');
-        }
-    }
-    paymentCancel(res) {
-        return res.send(`
-      <html>
-        <head><title>Payment Cancelled</title></head>
-        <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
-          <h1>❌ Payment Cancelled</h1>
-          <p>No worries. You can try again anytime.</p>
-          <a href="/">Return to Home</a>
-        </body>
-      </html>
-    `);
     }
 };
 exports.PaymentController = PaymentController;
@@ -77,23 +63,7 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], PaymentController.prototype, "createCheckout", null);
-__decorate([
-    (0, common_1.Get)('success'),
-    __param(0, (0, common_1.Query)('session_id')),
-    __param(1, (0, common_1.Res)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", Promise)
-], PaymentController.prototype, "paymentSuccess", null);
-__decorate([
-    (0, common_1.Get)('cancel'),
-    __param(0, (0, common_1.Res)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
-], PaymentController.prototype, "paymentCancel", null);
 exports.PaymentController = PaymentController = __decorate([
-    (0, common_1.Controller)('payment'),
-    __metadata("design:paramtypes", [payment_service_1.PaymentService])
+    (0, common_1.Controller)('payment')
 ], PaymentController);
 //# sourceMappingURL=payment.controller.js.map

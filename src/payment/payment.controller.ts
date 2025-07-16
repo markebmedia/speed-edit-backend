@@ -1,77 +1,49 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Res,
-  Get,
-  Query,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, Res } from '@nestjs/common';
+import Stripe from 'stripe';
 import { Response } from 'express';
-import { PaymentService } from './payment.service';
 
 @Controller('payment')
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  private stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2022-11-15',
+  });
 
   @Post('create-checkout')
   async createCheckout(
     @Body('imageUrl') imageUrl: string,
-    @Res() res: Response,
+    @Res() res: Response
   ) {
-    if (!imageUrl) {
-      return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Missing imageUrl' });
-    }
-
     try {
-      const sessionUrl = await this.paymentService.createCheckoutSession(imageUrl);
-      return res.status(HttpStatus.OK).json({ url: sessionUrl });
+      if (!imageUrl) {
+        return res.status(400).json({ message: 'Missing imageUrl' });
+      }
+
+      console.log('Creating Stripe checkout for:', imageUrl);
+
+      const session = await this.stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'gbp',
+              product_data: {
+                name: 'Enhanced Property Image',
+                images: [imageUrl],
+              },
+              unit_amount: 199, // £1.99
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${process.env.FRONTEND_URL}/success`,
+        cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+      });
+
+      return res.status(200).json({ url: session.url });
     } catch (error) {
-      console.error('Stripe Error:', error);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create checkout session' });
+      console.error('Stripe checkout error:', error);
+      return res.status(500).json({ message: 'Stripe checkout failed' });
     }
-  }
-
-  @Get('success')
-  async paymentSuccess(@Query('session_id') sessionId: string, @Res() res: Response) {
-    if (!sessionId) {
-      return res.status(HttpStatus.BAD_REQUEST).send('Missing session ID');
-    }
-
-    try {
-      const session = await this.paymentService.retrieveSession(sessionId);
-      const imageUrl = (session.payment_intent as any).metadata?.imageUrl;
-
-      return res.send(`
-        <html>
-          <head><title>Payment Success</title></head>
-          <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
-            <h1>✅ Payment Successful!</h1>
-            <p>Your image is ready to download:</p>
-            <a href="${imageUrl}" download style="font-size: 18px;">⬇️ Download Image</a>
-          </body>
-        </html>
-      `);
-    } catch (err) {
-      console.error(err);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error retrieving payment details.');
-    }
-  }
-
-  @Get('cancel')
-  paymentCancel(@Res() res: Response) {
-    return res.send(`
-      <html>
-        <head><title>Payment Cancelled</title></head>
-        <body style="font-family: sans-serif; text-align: center; padding-top: 100px;">
-          <h1>❌ Payment Cancelled</h1>
-          <p>No worries. You can try again anytime.</p>
-          <a href="/">Return to Home</a>
-        </body>
-      </html>
-    `);
   }
 }
-
-
-

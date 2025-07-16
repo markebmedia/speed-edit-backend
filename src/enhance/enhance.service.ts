@@ -1,58 +1,65 @@
 import { Injectable } from '@nestjs/common';
-import { join } from 'path';
-import { writeFile, unlink } from 'fs/promises';
-import * as fs from 'fs';
+import { join, resolve } from 'path';
+import { createWriteStream, readFileSync, existsSync, mkdirSync } from 'fs';
+import { v4 as uuid } from 'uuid';
 import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
 import * as FormData from 'form-data';
 
 @Injectable()
 export class EnhanceService {
-  async enhanceImage(file: Express.Multer.File, imageType: string): Promise<string> {
-    const tempFileName = `${uuidv4()}-${file.originalname}`;
-    const tempFilePath = join(__dirname, '../../temp', tempFileName);
-    const enhancedFileName = `enhanced-${tempFileName}`;
-    const enhancedFilePath = join(__dirname, '../../public/outputs', enhancedFileName);
+  async enhance(filePath: string): Promise<string> {
+    const form = new FormData();
+    form.append('image', readFileSync(filePath), {
+      filename: 'input.jpg',
+      contentType: 'image/jpeg',
+    });
 
     try {
-      // 1. Save uploaded file temporarily
-      await writeFile(tempFilePath, file.buffer);
-
-      // 2. Prepare form and send to enhancement API
-      const formData = new FormData();
-      formData.append('file', fs.createReadStream(tempFilePath));
-      formData.append('imageType', imageType);
-
-      const response = await axios.post<ArrayBuffer>(
+      const response = await axios.post(
         'https://swinir-api.onrender.com/enhance',
-        formData,
+        form,
         {
-          headers: formData.getHeaders(),
+          headers: form.getHeaders(),
           responseType: 'arraybuffer',
-        }
+          timeout: 30000,
+        },
       );
 
-      // 3. Convert ArrayBuffer to Buffer
-      const enhancedBuffer = Buffer.from(new Uint8Array(response.data));
+      // Generate output path
+      const outputFilename = `${uuid()}.jpg`;
+      const outputDir = resolve(__dirname, '..', '..', 'public', 'outputs');
+      const outputPath = join(outputDir, outputFilename);
 
-      // 4. Save enhanced image
-      await writeFile(enhancedFilePath, enhancedBuffer);
-
-      // 5. Return relative public URL
-      return `/outputs/${enhancedFileName}`;
-    } catch (error) {
-      console.error('Enhancement error:', error);
-      throw new Error('Image enhancement failed');
-    } finally {
-      // 6. Cleanup: delete temporary file
-      try {
-        await unlink(tempFilePath);
-      } catch (e) {
-        console.warn('Failed to delete temp file:', tempFilePath);
+      // Ensure output folder exists
+      if (!existsSync(outputDir)) {
+        mkdirSync(outputDir, { recursive: true });
       }
+
+      // Save the enhanced image
+      const buffer = Buffer.from(response.data as ArrayBuffer);
+      const output = createWriteStream(outputPath);
+      output.write(buffer);
+      output.end();
+
+      console.log('✅ Enhanced image saved to:', outputPath);
+
+      // Return the public URL (e.g., http://localhost:3000/outputs/uuid.jpg)
+      const publicUrl = `/outputs/${outputFilename}`;
+      return publicUrl;
+    } catch (error: any) {
+      console.error('❌ Enhancement failed');
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Response:', error.response.data.toString('utf8'));
+      } else {
+        console.error('Message:', error.message);
+      }
+      throw new Error('AI enhancement failed');
     }
   }
 }
+
+
 
 
 
