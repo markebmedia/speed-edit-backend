@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import { Controller, Post, Body, Res, Get } from '@nestjs/common';
 import Stripe from 'stripe';
 import { Response } from 'express';
 
@@ -45,5 +45,11 @@ export class PaymentController {
       console.error('Stripe checkout error:', error);
       return res.status(500).json({ message: 'Stripe checkout failed' });
     }
+  }
+
+  // ✅ Add this to satisfy Render's health check
+  @Get('cancel')
+  cancelPage(@Res() res: Response) {
+    return res.status(200).send('Payment cancelled');
   }
 }
