@@ -7,7 +7,7 @@ from utils.enhance_cv import enhance_image_cv
 
 router = APIRouter()
 
-@router.post("/cv-enhance")
+@router.post("/")
 async def cv_enhance(file: UploadFile = File(...)):
     # Save uploaded file to /tmp
     temp_input_path = f"/tmp/{uuid4().hex}_{file.filename}"
