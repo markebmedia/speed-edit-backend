@@ -1,7 +1,7 @@
 import os
 import subprocess
 import uuid
-from fastapi import UploadFile
+import shutil
 
 UPLOAD_DIR = "temp_inputs"
 OUTPUT_DIR = "temp_outputs"
@@ -9,18 +9,18 @@ OUTPUT_DIR = "temp_outputs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def enhance_image_swinir(file: UploadFile) -> str:
-    # Save uploaded image to disk
-    input_filename = f"{uuid.uuid4().hex}_{file.filename}"
-    input_path = os.path.join(UPLOAD_DIR, input_filename)
-    with open(input_path, "wb") as f:
-        f.write(file.file.read())
+def enhance_image_swinir(input_path: str) -> str:
+    # Generate unique filename and copy original input into temp_inputs
+    original_filename = os.path.basename(input_path)
+    unique_filename = f"{uuid.uuid4().hex}_{original_filename}"
+    temp_input_path = os.path.join(UPLOAD_DIR, unique_filename)
+    shutil.copy(input_path, temp_input_path)
 
-    # Output file path
-    output_filename = f"enhanced_{input_filename}"
+    # Output filename and path
+    output_filename = f"enhanced_{unique_filename}"
     output_path = os.path.join(OUTPUT_DIR, output_filename)
 
-    # Run enhancement using your SwinIR script
+    # Call SwinIR enhancement script
     command = [
         "python3", "SwinIR/main_test_swinir.py",
         "--task", "real_image_sr",
@@ -33,4 +33,5 @@ def enhance_image_swinir(file: UploadFile) -> str:
 
     subprocess.run(command, check=True)
 
+    # Return the full path of the enhanced image
     return output_path
