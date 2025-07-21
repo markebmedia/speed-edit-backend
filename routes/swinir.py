@@ -6,7 +6,7 @@ import shutil
 
 router = APIRouter()
 
-@router.post("/")
+@router.post("/enhance")
 async def swinir_enhance(file: UploadFile = File(...)):
     try:
         # Save uploaded file to a temporary location with .jpg extension
