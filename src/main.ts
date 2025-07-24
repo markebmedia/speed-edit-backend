@@ -8,8 +8,13 @@ import * as bodyParser from 'body-parser';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Enable CORS for all origins
-  app.enableCors({ origin: '*' });
+  // Enable CORS with full config to cover preflight requests
+  app.enableCors({
+    origin: '*', // or specify your frontend URL here
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 204, // for legacy browser support
+  });
 
   // Increase body size limits
   app.use(bodyParser.json({ limit: '50mb' }));
@@ -34,4 +39,5 @@ async function bootstrap() {
 }
 
 bootstrap();
+
 
