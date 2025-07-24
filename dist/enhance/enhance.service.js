@@ -8,48 +8,52 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EnhanceService = void 0;
 const common_1 = require("@nestjs/common");
-const path_1 = require("path");
 const fs_1 = require("fs");
+const path_1 = require("path");
 const uuid_1 = require("uuid");
-const axios_1 = require("axios");
-const FormData = require("form-data");
+const child_process_1 = require("child_process");
 let EnhanceService = class EnhanceService {
-    async enhance(filePath) {
-        const form = new FormData();
-        form.append('image', (0, fs_1.readFileSync)(filePath), {
-            filename: 'input.jpg',
-            contentType: 'image/jpeg',
-        });
-        try {
-            const response = await axios_1.default.post('https://swinir-api.onrender.com/enhance', form, {
-                headers: form.getHeaders(),
-                responseType: 'arraybuffer',
-                timeout: 30000,
+    async enhance(filePath, method) {
+        const tempOutputFilename = `${(0, uuid_1.v4)()}.jpg`;
+        const tempOutputPath = (0, path_1.resolve)(__dirname, '..', '..', 'temp_outputs', tempOutputFilename);
+        const swinirScript = (0, path_1.resolve)(__dirname, '..', '..', 'src', 'swinir', 'enhance_swinir.py');
+        const cvScript = (0, path_1.resolve)(__dirname, '..', '..', 'src', 'utils', 'enhance_cv.py');
+        const runPythonEnhancement = (scriptPath, inputPath, outputPath) => {
+            return new Promise((resolveProcess, rejectProcess) => {
+                const pythonProcess = (0, child_process_1.spawn)('python3', [scriptPath, '--input', inputPath, '--output', outputPath]);
+                pythonProcess.stderr.on('data', (data) => {
+                    console.error(`❌ Python Error (${scriptPath}):`, data.toString());
+                });
+                pythonProcess.on('close', (code) => {
+                    if (code !== 0) {
+                        console.error(`❌ Python process (${scriptPath}) exited with code`, code);
+                        return rejectProcess(new common_1.InternalServerErrorException(`${scriptPath} failed`));
+                    }
+                    return resolveProcess();
+                });
             });
-            const outputFilename = `${(0, uuid_1.v4)()}.jpg`;
-            const outputDir = (0, path_1.resolve)(__dirname, '..', '..', 'public', 'outputs');
-            const outputPath = (0, path_1.join)(outputDir, outputFilename);
-            if (!(0, fs_1.existsSync)(outputDir)) {
-                (0, fs_1.mkdirSync)(outputDir, { recursive: true });
+        };
+        try {
+            if (method === 'swinir') {
+                await runPythonEnhancement(swinirScript, filePath, tempOutputPath);
             }
-            const buffer = Buffer.from(response.data);
-            const output = (0, fs_1.createWriteStream)(outputPath);
-            output.write(buffer);
-            output.end();
-            console.log('✅ Enhanced image saved to:', outputPath);
-            const publicUrl = `/outputs/${outputFilename}`;
-            return publicUrl;
+            else if (method === 'localcv') {
+                await runPythonEnhancement(cvScript, filePath, tempOutputPath);
+            }
+            else if (method === 'both') {
+                const intermediatePath = (0, path_1.resolve)(__dirname, '..', '..', 'temp_outputs', `${(0, uuid_1.v4)()}-cv.jpg`);
+                await runPythonEnhancement(cvScript, filePath, intermediatePath);
+                await runPythonEnhancement(swinirScript, intermediatePath, tempOutputPath);
+                (0, fs_1.unlinkSync)(intermediatePath);
+            }
+            const enhancedBuffer = (0, fs_1.readFileSync)(tempOutputPath);
+            (0, fs_1.unlinkSync)(filePath);
+            (0, fs_1.unlinkSync)(tempOutputPath);
+            return enhancedBuffer;
         }
-        catch (error) {
-            console.error('❌ Enhancement failed');
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Response:', error.response.data.toString('utf8'));
-            }
-            else {
-                console.error('Message:', error.message);
-            }
-            throw new Error('AI enhancement failed');
+        catch (err) {
+            console.error('❌ Enhancement failed:', err);
+            throw new common_1.InternalServerErrorException('Failed to enhance image');
         }
     }
 };

@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { join, resolve } from 'path';
+import { readFileSync, unlinkSync } from 'fs';
+import { resolve } from 'path';
 import { v4 as uuid } from 'uuid';
 import { spawn } from 'child_process';
 
@@ -9,6 +9,10 @@ export class EnhanceService {
   async enhance(filePath: string, method: 'swinir' | 'localcv' | 'both'): Promise<Buffer> {
     const tempOutputFilename = `${uuid()}.jpg`;
     const tempOutputPath = resolve(__dirname, '..', '..', 'temp_outputs', tempOutputFilename);
+
+    // Absolute script paths
+    const swinirScript = resolve(__dirname, '..', '..', 'src', 'swinir', 'enhance_swinir.py');
+    const cvScript = resolve(__dirname, '..', '..', 'src', 'utils', 'enhance_cv.py');
 
     const runPythonEnhancement = (scriptPath: string, inputPath: string, outputPath: string): Promise<void> => {
       return new Promise((resolveProcess, rejectProcess) => {
@@ -30,19 +34,19 @@ export class EnhanceService {
 
     try {
       if (method === 'swinir') {
-        await runPythonEnhancement('src/swinir/enhance_swinir.py', filePath, tempOutputPath);
+        await runPythonEnhancement(swinirScript, filePath, tempOutputPath);
       } else if (method === 'localcv') {
-        await runPythonEnhancement('src/utils/enhance_cv.py', filePath, tempOutputPath);
+        await runPythonEnhancement(cvScript, filePath, tempOutputPath);
       } else if (method === 'both') {
         const intermediatePath = resolve(__dirname, '..', '..', 'temp_outputs', `${uuid()}-cv.jpg`);
-        await runPythonEnhancement('src/utils/enhance_cv.py', filePath, intermediatePath);
-        await runPythonEnhancement('src/swinir/enhance_swinir.py', intermediatePath, tempOutputPath);
-        unlinkSync(intermediatePath); // Clean up intermediate
+        await runPythonEnhancement(cvScript, filePath, intermediatePath);
+        await runPythonEnhancement(swinirScript, intermediatePath, tempOutputPath);
+        unlinkSync(intermediatePath);
       }
 
       const enhancedBuffer = readFileSync(tempOutputPath);
-      unlinkSync(filePath); // Remove original
-      unlinkSync(tempOutputPath); // Remove final
+      unlinkSync(filePath);
+      unlinkSync(tempOutputPath);
 
       return enhancedBuffer;
     } catch (err) {

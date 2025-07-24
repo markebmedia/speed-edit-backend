@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
@@ -10,12 +11,19 @@ async function bootstrap() {
   // Enable CORS for all origins
   app.enableCors({ origin: '*' });
 
-  // Increase body size limits (for large uploads if needed)
+  // Increase body size limits
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-  // ✅ Serve enhanced images from /public/outputs at http://localhost:3000/outputs/*
-  app.useStaticAssets(join(__dirname, '..', 'public/outputs'), {
+  // Create temp folders if missing
+  const tempDir = join(__dirname, '..', '..', 'temp');
+  const tempOutDir = join(__dirname, '..', '..', 'temp_outputs');
+
+  if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
+  if (!existsSync(tempOutDir)) mkdirSync(tempOutDir, { recursive: true });
+
+  // Serve static assets from /outputs (optional)
+  app.useStaticAssets(join(__dirname, '..', '..', 'public', 'outputs'), {
     prefix: '/outputs',
   });
 

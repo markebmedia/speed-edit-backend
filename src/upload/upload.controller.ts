@@ -1,7 +1,7 @@
-// src/upload/upload.controller.ts
 import {
   Controller,
   Post,
+  Get,
   UploadedFile,
   UseInterceptors,
   Body,
@@ -11,20 +11,25 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuid } from 'uuid';
-import { extname, resolve } from 'path';
+import { extname, join, resolve } from 'path';
 import { EnhanceService } from '../enhance/enhance.service';
 import { Response } from 'express';
-import * as fs from 'fs';
 
 @Controller('upload')
 export class UploadController {
   constructor(private readonly enhanceService: EnhanceService) {}
 
-  @Post()
+  // Diagnostic ping route
+  @Get('ping')
+  ping() {
+    return { message: 'Upload controller is alive' };
+  }
+
+  @Post('test-upload')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
-        destination: './temp', // Save raw uploads temporarily
+        destination: resolve(__dirname, '..', '..', 'temp'),
         filename: (req, file, cb) => {
           const uniqueName = `${uuid()}${extname(file.originalname)}`;
           cb(null, uniqueName);
@@ -58,4 +63,3 @@ export class UploadController {
     }
   }
 }
-
