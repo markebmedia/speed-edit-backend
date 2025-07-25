@@ -4,40 +4,59 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import * as bodyParser from 'body-parser';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  // Enable CORS with full config to cover preflight requests
-  app.enableCors({
-    origin: '*', // or specify your frontend URL here
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204, // for legacy browser support
+  // 🔥 Global error logging
+  process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err.message);
+    console.error(err.stack);
   });
 
-  // Increase body size limits
+  process.on('unhandledRejection', (reason) => {
+    console.error('❌ Unhandled Rejection:', reason);
+  });
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // ✅ CORS
+  app.enableCors({
+    origin: '*', // TODO: Restrict to your frontend URL in production
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 204,
+  });
+
+  // ✅ Increase body size limits for large uploads
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Create temp folders if missing
+  // ✅ Ensure temp directories exist
   const tempDir = join(__dirname, '..', '..', 'temp');
   const tempOutDir = join(__dirname, '..', '..', 'temp_outputs');
 
-  if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
-  if (!existsSync(tempOutDir)) mkdirSync(tempOutDir, { recursive: true });
+  if (!existsSync(tempDir)) {
+    mkdirSync(tempDir, { recursive: true });
+    console.log(`📂 Created temp dir: ${tempDir}`);
+  }
 
-  // Serve static assets from /outputs (optional)
+  if (!existsSync(tempOutDir)) {
+    mkdirSync(tempOutDir, { recursive: true });
+    console.log(`📂 Created temp outputs dir: ${tempOutDir}`);
+  }
+
+  // ✅ Serve static outputs (if needed)
   app.useStaticAssets(join(__dirname, '..', '..', 'public', 'outputs'), {
     prefix: '/outputs',
   });
 
-  // Start the server
+  // ✅ Start the server
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 Backend running on http://localhost:${port}`);
+  Logger.log(`🚀 Backend running on port ${port}`, 'Bootstrap');
 }
 
 bootstrap();
+
 
 

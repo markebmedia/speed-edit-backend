@@ -7,7 +7,7 @@ import {
   Body,
   BadRequestException,
   Res,
-  InternalServerErrorException
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -34,6 +34,7 @@ export class UploadController {
 
   @Get('ping')
   ping() {
+    console.log('✅ /upload/ping hit');
     return { message: 'Upload controller is alive' };
   }
 
@@ -45,15 +46,26 @@ export class UploadController {
         filename: (req, file, cb) => {
           const uniqueName = `${uuid()}${extname(file.originalname)}`;
           cb(null, uniqueName);
-        }
-      })
-    })
+        },
+      }),
+    }),
   )
   async uploadAndEnhance(
     @UploadedFile() file: MulterFile,
     @Body('method') method: 'localcv' | 'swinir' | 'both',
-    @Res() res: Response
+    @Res() res: Response,
   ) {
+    console.log('➡️ /upload/test-upload called');
+
+    // ✅ Log raw incoming values
+    console.log('📥 Raw body.method:', method);
+    console.log('📂 Raw file info:', file ? {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      path: file.path,
+    } : '❌ No file received');
+
     if (!file) {
       console.error('❌ No file uploaded');
       throw new BadRequestException('No file uploaded');
@@ -64,23 +76,29 @@ export class UploadController {
       throw new BadRequestException('Invalid enhancement method');
     }
 
-    console.log(`📥 Received file: ${file.originalname}, Method: ${method}`);
+    console.log(`🚀 Starting enhancement: ${method}`);
 
     try {
       const enhancedBuffer = await this.enhanceService.enhance(file.path, method);
-      console.log('✅ Enhancement completed, sending response');
+
+      if (!enhancedBuffer) {
+        console.error('❌ Enhancement service returned empty buffer');
+        throw new Error('Enhancement service returned empty buffer');
+      }
+
+      console.log('✅ Enhancement completed successfully, sending response');
 
       res.set({
         'Content-Type': 'image/jpeg',
-        'Content-Disposition': 'attachment; filename=enhanced.jpg'
+        'Content-Disposition': 'attachment; filename=enhanced.jpg',
       });
       return res.send(enhancedBuffer);
-    } catch (err: any) {
-      console.error('❌ UploadController error:', err?.message || err);
-      console.error(err?.stack || err);
 
+    } catch (err: any) {
+      console.error('🔥 ERROR in UploadController:', err?.message || err);
+      console.error('🔥 Stack:', err?.stack || err);
       throw new InternalServerErrorException(
-        'Enhancement failed: ' + (err?.message || 'Unknown error')
+        'Enhancement failed: ' + (err?.message || 'Unknown error'),
       );
     }
   }
