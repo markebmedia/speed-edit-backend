@@ -7,47 +7,76 @@ import { spawn } from 'child_process';
 @Injectable()
 export class EnhanceService {
   async enhance(filePath: string, method: 'swinir' | 'localcv' | 'both'): Promise<Buffer> {
+    const tempOutputDir = resolve(__dirname, '..', '..', 'temp_outputs');
     const tempOutputFilename = `${uuid()}.jpg`;
-    const tempOutputPath = resolve(__dirname, '..', '..', 'temp_outputs', tempOutputFilename);
+    const tempOutputPath = resolve(tempOutputDir, tempOutputFilename);
 
-    // ✅ Correct absolute script paths (remove extra "src")
-const swinirScript = resolve(__dirname, '..', 'swinir', 'enhance_swinir.py');
-const cvScript = resolve(__dirname, '..', 'utils', 'enhance_cv.py');
+    // ✅ Correct absolute script paths
+    const swinirScript = resolve(__dirname, '..', 'swinir', 'enhance_swinir.py');
+    const cvScript = resolve(__dirname, '..', 'utils', 'enhance_cv.py');
 
-
-    const runPythonEnhancement = (scriptPath: string, inputPath: string, outputPath: string): Promise<void> => {
+    // ✅ Runs a Python script and captures its stdout for the real output path
+    const runPythonEnhancement = (scriptPath: string, inputPath: string, outputPath: string): Promise<string> => {
       return new Promise((resolveProcess, rejectProcess) => {
-        const pythonProcess = spawn('python3', [scriptPath, '--input', inputPath, '--output', outputPath]);
+        console.log(`🚀 Running Python: ${scriptPath}`);
+        const pythonProcess = spawn('python3', [scriptPath, inputPath, outputPath]);
+
+        let stdout = '';
+        let stderr = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
 
         pythonProcess.stderr.on('data', (data) => {
-          console.error(`❌ Python Error (${scriptPath}):`, data.toString());
+          stderr += data.toString();
         });
 
         pythonProcess.on('close', (code) => {
           if (code !== 0) {
-            console.error(`❌ Python process (${scriptPath}) exited with code`, code);
+            console.error(`❌ Python process (${scriptPath}) exited with code ${code}`);
+            console.error(stderr || stdout);
             return rejectProcess(new InternalServerErrorException(`${scriptPath} failed`));
           }
-          return resolveProcess();
+          const outPath = stdout.trim() || outputPath;
+          console.log(`✅ Python finished. Output: ${outPath}`);
+          resolveProcess(outPath);
         });
       });
     };
 
     try {
+      let finalOutputPath = tempOutputPath;
+
       if (method === 'swinir') {
-        await runPythonEnhancement(swinirScript, filePath, tempOutputPath);
+        finalOutputPath = await runPythonEnhancement(swinirScript, filePath, tempOutputPath);
       } else if (method === 'localcv') {
-        await runPythonEnhancement(cvScript, filePath, tempOutputPath);
+        finalOutputPath = await runPythonEnhancement(cvScript, filePath, tempOutputPath);
       } else if (method === 'both') {
-        const intermediatePath = resolve(__dirname, '..', '..', 'temp_outputs', `${uuid()}-cv.jpg`);
-        await runPythonEnhancement(cvScript, filePath, intermediatePath);
-        await runPythonEnhancement(swinirScript, intermediatePath, tempOutputPath);
-        unlinkSync(intermediatePath);
+        const intermediatePath = resolve(tempOutputDir, `${uuid()}-cv.jpg`);
+        const cvOut = await runPythonEnhancement(cvScript, filePath, intermediatePath);
+        finalOutputPath = await runPythonEnhancement(swinirScript, cvOut, tempOutputPath);
+        try {
+          unlinkSync(cvOut);
+        } catch (e) {
+          console.warn(`⚠️ Could not remove intermediate file: ${cvOut}`);
+        }
       }
 
-      const enhancedBuffer = readFileSync(tempOutputPath);
-      unlinkSync(filePath);
-      unlinkSync(tempOutputPath);
+      const enhancedBuffer = readFileSync(finalOutputPath);
+
+      // ✅ Clean up
+      try {
+        unlinkSync(filePath);
+      } catch (e) {
+        console.warn(`⚠️ Could not remove input file: ${filePath}`);
+      }
+
+      try {
+        unlinkSync(finalOutputPath);
+      } catch (e) {
+        console.warn(`⚠️ Could not remove output file: ${finalOutputPath}`);
+      }
 
       return enhancedBuffer;
     } catch (err) {
@@ -56,8 +85,6 @@ const cvScript = resolve(__dirname, '..', 'utils', 'enhance_cv.py');
     }
   }
 }
-
-
 
 
 
