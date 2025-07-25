@@ -6,7 +6,8 @@ import {
   UseInterceptors,
   Body,
   BadRequestException,
-  Res
+  Res,
+  InternalServerErrorException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -15,7 +16,6 @@ import { extname, resolve } from 'path';
 import { EnhanceService } from '../enhance/enhance.service';
 import { Response } from 'express';
 
-// ✅ Define our own type so we don't rely on Express namespace
 type MulterFile = {
   fieldname: string;
   originalname: string;
@@ -54,21 +54,34 @@ export class UploadController {
     @Body('method') method: 'localcv' | 'swinir' | 'both',
     @Res() res: Response
   ) {
-    if (!file) throw new BadRequestException('No file uploaded');
+    if (!file) {
+      console.error('❌ No file uploaded');
+      throw new BadRequestException('No file uploaded');
+    }
+
     if (!method || !['localcv', 'swinir', 'both'].includes(method)) {
+      console.error('❌ Invalid enhancement method:', method);
       throw new BadRequestException('Invalid enhancement method');
     }
 
+    console.log(`📥 Received file: ${file.originalname}, Method: ${method}`);
+
     try {
       const enhancedBuffer = await this.enhanceService.enhance(file.path, method);
+      console.log('✅ Enhancement completed, sending response');
+
       res.set({
         'Content-Type': 'image/jpeg',
         'Content-Disposition': 'attachment; filename=enhanced.jpg'
       });
       return res.send(enhancedBuffer);
-    } catch (err) {
-      console.error('❌ UploadController error:', err);
-      return res.status(500).json({ error: 'Enhancement failed' });
+    } catch (err: any) {
+      console.error('❌ UploadController error:', err?.message || err);
+      console.error(err?.stack || err);
+
+      throw new InternalServerErrorException(
+        'Enhancement failed: ' + (err?.message || 'Unknown error')
+      );
     }
   }
 }
