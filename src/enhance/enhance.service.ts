@@ -11,8 +11,9 @@ export class EnhanceService {
     const tempOutputPath = resolve(__dirname, '..', '..', 'temp_outputs', tempOutputFilename);
 
     // ✅ Correct absolute script paths (remove extra "src")
-    const swinirScript = resolve(__dirname, '..', '..', 'swinir', 'enhance_swinir.py');
-    const cvScript = resolve(__dirname, '..', '..', 'utils', 'enhance_cv.py');
+const swinirScript = resolve(__dirname, '..', 'swinir', 'enhance_swinir.py');
+const cvScript = resolve(__dirname, '..', 'utils', 'enhance_cv.py');
+
 
     const runPythonEnhancement = (scriptPath: string, inputPath: string, outputPath: string): Promise<void> => {
       return new Promise((resolveProcess, rejectProcess) => {

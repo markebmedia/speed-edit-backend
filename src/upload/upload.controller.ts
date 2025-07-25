@@ -11,15 +11,27 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuid } from 'uuid';
-import { extname, join, resolve } from 'path';
+import { extname, resolve } from 'path';
 import { EnhanceService } from '../enhance/enhance.service';
 import { Response } from 'express';
+
+// ✅ Define our own type so we don't rely on Express namespace
+type MulterFile = {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+};
 
 @Controller('upload')
 export class UploadController {
   constructor(private readonly enhanceService: EnhanceService) {}
 
-  // Diagnostic ping route
   @Get('ping')
   ping() {
     return { message: 'Upload controller is alive' };
@@ -38,14 +50,11 @@ export class UploadController {
     })
   )
   async uploadAndEnhance(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: MulterFile,
     @Body('method') method: 'localcv' | 'swinir' | 'both',
     @Res() res: Response
   ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
-
+    if (!file) throw new BadRequestException('No file uploaded');
     if (!method || !['localcv', 'swinir', 'both'].includes(method)) {
       throw new BadRequestException('Invalid enhancement method');
     }
@@ -54,7 +63,7 @@ export class UploadController {
       const enhancedBuffer = await this.enhanceService.enhance(file.path, method);
       res.set({
         'Content-Type': 'image/jpeg',
-        'Content-Disposition': 'attachment; filename=enhanced.jpg',
+        'Content-Disposition': 'attachment; filename=enhanced.jpg'
       });
       return res.send(enhancedBuffer);
     } catch (err) {

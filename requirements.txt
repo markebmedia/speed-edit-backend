@@ -1,5 +1,12 @@
+# Core AI and image processing
 opencv-python==4.8.0.76
 numpy>=1.24.0,<2.0.0
 Pillow==11.3.0
+
+# PyTorch + SwinIR
 torch==2.2.2
+torchvision==0.17.2
 timm==1.0.17
+
+# Optional (safe to include)
+requests>=2.31.0

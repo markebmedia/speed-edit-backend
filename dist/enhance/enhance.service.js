@@ -16,8 +16,8 @@ let EnhanceService = class EnhanceService {
     async enhance(filePath, method) {
         const tempOutputFilename = `${(0, uuid_1.v4)()}.jpg`;
         const tempOutputPath = (0, path_1.resolve)(__dirname, '..', '..', 'temp_outputs', tempOutputFilename);
-        const swinirScript = (0, path_1.resolve)(__dirname, '..', '..', 'src', 'swinir', 'enhance_swinir.py');
-        const cvScript = (0, path_1.resolve)(__dirname, '..', '..', 'src', 'utils', 'enhance_cv.py');
+        const swinirScript = (0, path_1.resolve)(__dirname, '..', 'swinir', 'enhance_swinir.py');
+        const cvScript = (0, path_1.resolve)(__dirname, '..', 'utils', 'enhance_cv.py');
         const runPythonEnhancement = (scriptPath, inputPath, outputPath) => {
             return new Promise((resolveProcess, rejectProcess) => {
                 const pythonProcess = (0, child_process_1.spawn)('python3', [scriptPath, '--input', inputPath, '--output', outputPath]);
