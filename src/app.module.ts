@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { UploadController } from './upload/upload.controller';
+import { UploadModule } from './upload/upload.module';  // ✅ NEW
 import { EnhanceService } from './enhance/enhance.service';
 import { PaymentController } from './payment/payment.controller';
 
 @Module({
-  controllers: [UploadController, PaymentController],
+  imports: [UploadModule],  // ✅ NEW
+  controllers: [PaymentController],
   providers: [EnhanceService],
 })
 export class AppModule {}
