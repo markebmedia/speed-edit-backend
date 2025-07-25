@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "rimraf dist && nest build",
+    "postbuild": "mkdir -p dist/utils && cp -r src/utils/*.py dist/utils/",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
