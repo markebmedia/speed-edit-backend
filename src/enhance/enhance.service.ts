@@ -7,7 +7,8 @@ import { spawn } from 'child_process';
 @Injectable()
 export class EnhanceService {
   async enhance(filePath: string, method: 'swinir' | 'localcv' | 'both'): Promise<Buffer> {
-    const tempOutputDir = resolve(__dirname, '..', '..', 'temp_outputs');
+    // ✅ Match the folder created in main.ts (/opt/render/project/temp_outputs)
+    const tempOutputDir = resolve(__dirname, '..', '..', '..', 'temp_outputs');
     const tempOutputFilename = `${uuid()}.jpg`;
     const tempOutputPath = resolve(tempOutputDir, tempOutputFilename);
 
@@ -15,11 +16,9 @@ export class EnhanceService {
     const swinirScript = resolve(__dirname, '..', 'swinir', 'enhance_swinir.py');
     const cvScript = resolve(__dirname, '..', 'utils', 'enhance_cv.py');
 
-    // ✅ Runs a Python script and captures its stdout for the real output path
     const runPythonEnhancement = (scriptPath: string, inputPath: string, outputPath: string): Promise<string> => {
       return new Promise((resolveProcess, rejectProcess) => {
         console.log(`🚀 Running Python: ${scriptPath}`);
-        // ✅ Removed --input/--output flags; pass positional arguments instead
         const pythonProcess = spawn('python3', [scriptPath, inputPath, outputPath]);
 
         let stdout = '';
@@ -66,7 +65,6 @@ export class EnhanceService {
 
       const enhancedBuffer = readFileSync(finalOutputPath);
 
-      // ✅ Clean up
       try {
         unlinkSync(filePath);
       } catch (e) {
@@ -86,5 +84,6 @@ export class EnhanceService {
     }
   }
 }
+
 
 
