@@ -19,6 +19,7 @@ export class EnhanceService {
     const runPythonEnhancement = (scriptPath: string, inputPath: string, outputPath: string): Promise<string> => {
       return new Promise((resolveProcess, rejectProcess) => {
         console.log(`🚀 Running Python: ${scriptPath}`);
+        // ✅ Removed --input/--output flags; pass positional arguments instead
         const pythonProcess = spawn('python3', [scriptPath, inputPath, outputPath]);
 
         let stdout = '';
@@ -85,8 +86,5 @@ export class EnhanceService {
     }
   }
 }
-
-
-
 
 
