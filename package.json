@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "rimraf dist && nest build",
+    "build": "tsc && mkdir -p dist/swinir/model_zoo && cp swinir/model_zoo/*.pth dist/swinir/model_zoo/",
     "postbuild": "mkdir -p dist/utils dist/swinir && cp -r utils/*.py dist/utils/ && cp -r swinir/*.py dist/swinir/ && cp -r swinir/models dist/swinir/models",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
