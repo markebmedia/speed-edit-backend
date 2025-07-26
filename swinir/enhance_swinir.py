@@ -1,13 +1,20 @@
 import os
+import sys
 import uuid
 import cv2
 import numpy as np
 import torch
 from torchvision.transforms.functional import to_tensor
+
+# ✅ Ensure dist/ is on sys.path so "swinir" is visible
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
 from swinir.models.network_swinir import SwinIR
 
 # ---- Model init (loads once) -----------------------------------------------
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _ckpt_path = os.path.join(CURRENT_DIR, "model_zoo", "001_classicalSR_DF2K_s64w8_SwinIR-M_x2.pth")
 
 model = SwinIR(
@@ -21,6 +28,7 @@ model.eval()
 
 
 def enhance_image_swinir(image_path: str, output_dir: str = "temp_outputs") -> str:
+    """Enhance a single image using SwinIR."""
     img_bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if img_bgr is None:
         raise RuntimeError(f"❌ Failed to read image: {image_path}")
@@ -42,7 +50,6 @@ def enhance_image_swinir(image_path: str, output_dir: str = "temp_outputs") -> s
 
 # ✅ CLI support
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) < 3:
         print("Usage: python enhance_swinir.py <input_path> <output_path>")
         sys.exit(1)
@@ -51,4 +58,3 @@ if __name__ == "__main__":
     if result_path != sys.argv[2]:
         os.rename(result_path, sys.argv[2])
         print(sys.argv[2])
-
